@@ -18,13 +18,12 @@ def big_small(num):
 
 def fetch_latest():
     r = requests.get(URL, headers=HEADERS, timeout=10)
-    if r.status_code != 200:
-        raise RuntimeError(f"HTTP {r.status_code}")
+    print("STATUS:", r.status_code)
+    print("HEADERS:", r.headers.get("content-type"))
+    print("TEXT:", r.text[:200])  # first 200 chars
 
-    try:
-        js = r.json()
-    except Exception:
-        raise RuntimeError("Non-JSON response")
+    r.raise_for_status()
+    js = r.json()
 
     data = js.get("data", {}).get("list", [])
     if not data:
