@@ -1,11 +1,12 @@
 import requests
 from datetime import datetime
+from pathlib import Path
 
 URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json"
-LOG_FILE = "history_log.txt"
+LOG_FILE = Path("history_log.txt")
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; WinGoLogger/1.0)",
+    "User-Agent": "Mozilla/5.0 (WinGoLogger/1.0)",
     "Accept": "application/json"
 }
 
@@ -17,8 +18,6 @@ def big_small(num):
 
 def fetch_latest():
     r = requests.get(URL, headers=HEADERS, timeout=10)
-
-    # ❗ API sometimes returns HTML / empty
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}")
 
@@ -34,26 +33,34 @@ def fetch_latest():
     item = data[0]
     return str(item["issueNumber"]), str(item["number"])
 
+def ensure_file():
+    if not LOG_FILE.exists():
+        LOG_FILE.write_text("")  # create empty file
+
 def already_logged(issue):
-    try:
-        with open(LOG_FILE, "r") as f:
-            return issue in f.read()
-    except FileNotFoundError:
+    if not LOG_FILE.exists():
         return False
+    with LOG_FILE.open("r") as f:
+        for line in f:
+            if f"| {issue} |" in line:
+                return True
+    return False
 
 def log(issue, number):
     entry = f"{now()} | {issue} | {number} | {big_small(number)}"
-    with open(LOG_FILE, "a") as f:
+    with LOG_FILE.open("a") as f:
         f.write(entry + "\n")
-    print(entry)
+    print("Logged:", entry)
 
 if __name__ == "__main__":
+    ensure_file()
+
     try:
         issue, number = fetch_latest()
-        if not already_logged(issue):
-            log(issue, number)
-        else:
+        if already_logged(issue):
             print("Already logged:", issue)
+        else:
+            log(issue, number)
     except Exception as e:
-        # IMPORTANT: do NOT crash the action
+        # IMPORTANT: file still exists so GitHub can commit
         print("Skipped this run:", e)
