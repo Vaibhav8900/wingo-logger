@@ -5,8 +5,15 @@ from pathlib import Path
 URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json"
 LOG_FILE = Path("history_log.txt")
 
+PROXY = "http://qibirfry:3kaieqa2ut16@6754:31.59.20.176"  # 👈 PUT YOUR PROXY HERE
+
+PROXIES = {
+    "http": PROXY,
+    "https": PROXY
+}
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (WinGoLogger/1.0)",
+    "User-Agent": "Mozilla/5.0",
     "Accept": "application/json"
 }
 
@@ -17,49 +24,33 @@ def big_small(num):
     return "BIG" if int(num) >= 5 else "SMALL"
 
 def fetch_latest():
-    r = requests.get(URL, headers=HEADERS, timeout=10)
-    print("STATUS:", r.status_code)
-    print("HEADERS:", r.headers.get("content-type"))
-    print("TEXT:", r.text[:200])  # first 200 chars
+    r = requests.get(
+        URL,
+        headers=HEADERS,
+        proxies=PROXIES,
+        timeout=15
+    )
 
-    r.raise_for_status()
     js = r.json()
-
-    data = js.get("data", {}).get("list", [])
-    if not data:
-        raise RuntimeError("Empty data list")
-
-    item = data[0]
+    item = js["data"]["list"][0]
     return str(item["issueNumber"]), str(item["number"])
-
-def ensure_file():
-    if not LOG_FILE.exists():
-        LOG_FILE.write_text("")  # create empty file
 
 def already_logged(issue):
     if not LOG_FILE.exists():
         return False
-    with LOG_FILE.open("r") as f:
-        for line in f:
-            if f"| {issue} |" in line:
-                return True
-    return False
+    return issue in LOG_FILE.read_text()
 
 def log(issue, number):
     entry = f"{now()} | {issue} | {number} | {big_small(number)}"
-    with LOG_FILE.open("a") as f:
-        f.write(entry + "\n")
+    LOG_FILE.write_text(LOG_FILE.read_text() + entry + "\n" if LOG_FILE.exists() else entry + "\n")
     print("Logged:", entry)
 
 if __name__ == "__main__":
-    ensure_file()
-
     try:
         issue, number = fetch_latest()
-        if already_logged(issue):
-            print("Already logged:", issue)
-        else:
+        if not already_logged(issue):
             log(issue, number)
+        else:
+            print("Already logged")
     except Exception as e:
-        # IMPORTANT: file still exists so GitHub can commit
-        print("Skipped this run:", e)
+        print("Skipped:", e)
