@@ -26,6 +26,7 @@ jobs:
 
       - name: Commit log
         run: |
+          touch history_log.txt
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add history_log.txt
