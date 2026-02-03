@@ -5,7 +5,7 @@ from pathlib import Path
 URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json"
 LOG_FILE = Path("history_log.txt")
 
-PROXY = "http://qibirfry:3kaieqa2ut16@6754:31.59.20.176"  # 👈 PUT YOUR PROXY HERE
+PROXY = "http://qibirfry:3kaieqa2ut16@31.59.20.176:6754"
 
 PROXIES = {
     "http": PROXY,
