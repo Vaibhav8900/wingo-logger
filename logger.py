@@ -6,11 +6,7 @@ URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json"
 LOG_FILE = Path("history_log.txt")
 
 PROXY = "http://qibirfry:3kaieqa2ut16@31.59.20.176:6754"
-
-PROXIES = {
-    "http": PROXY,
-    "https": PROXY
-}
+PROXIES = {"http": PROXY, "https": PROXY}
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -23,34 +19,52 @@ def now():
 def big_small(num):
     return "BIG" if int(num) >= 5 else "SMALL"
 
-def fetch_latest():
-    r = requests.get(
-        URL,
-        headers=HEADERS,
-        proxies=PROXIES,
-        timeout=15
-    )
-
+def fetch_last_10():
+    r = requests.get(URL, headers=HEADERS, proxies=PROXIES, timeout=20)
+    r.raise_for_status()
     js = r.json()
-    item = js["data"]["list"][0]
-    return str(item["issueNumber"]), str(item["number"])
+    return js["data"]["list"][:10]  # latest 10 rounds
 
-def already_logged(issue):
+def load_logged_issues():
     if not LOG_FILE.exists():
-        return False
-    return issue in LOG_FILE.read_text()
+        return set()
+    issues = set()
+    with LOG_FILE.open("r") as f:
+        for line in f:
+            parts = line.split("|")
+            if len(parts) >= 2:
+                issues.add(parts[1].strip())
+    return issues
 
-def log(issue, number):
-    entry = f"{now()} | {issue} | {number} | {big_small(number)}"
-    LOG_FILE.write_text(LOG_FILE.read_text() + entry + "\n" if LOG_FILE.exists() else entry + "\n")
-    print("Logged:", entry)
+def append(entry):
+    with LOG_FILE.open("a") as f:
+        f.write(entry + "\n")
 
 if __name__ == "__main__":
+    LOG_FILE.touch(exist_ok=True)
+
     try:
-        issue, number = fetch_latest()
-        if not already_logged(issue):
-            log(issue, number)
-        else:
-            print("Already logged")
+        logged = load_logged_issues()
+        rounds = fetch_last_10()
+
+        new_count = 0
+
+        # oldest → newest to keep order
+        for item in reversed(rounds):
+            issue = str(item["issueNumber"])
+            number = str(item["number"])
+
+            if issue in logged:
+                continue
+
+            entry = f"{now()} | {issue} | {number} | {big_small(number)}"
+            append(entry)
+            logged.add(issue)
+            new_count += 1
+            print("Logged:", entry)
+
+        if new_count == 0:
+            print("No new rounds this run")
+
     except Exception as e:
-        print("Skipped:", e)
+        print("Skipped run:", e)
